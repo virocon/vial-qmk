@@ -33,7 +33,10 @@ typedef enum {
     LAYER_GAME = 3,
 } layer_id_t;
 
-/* RGB UI modes — each maps 1:1 to a custom RGB effect at offset RGB_MATRIX_CUSTOM+N.
+/* RGB UI modes — each maps 1:1 to a named custom RGB effect:
+ *   UI_MODE_DEFAULT → RGB_MATRIX_CUSTOM_FIRMWARE_UI
+ *   UI_MODE_DEBUG   → RGB_MATRIX_CUSTOM_DEBUG_MODE
+ *   UI_MODE_GAMING  → RGB_MATRIX_CUSTOM_GAMING_MODE
  * Also indexes theme_table[] and user_config.theme. */
 typedef enum {
     UI_MODE_DEFAULT = 0,
@@ -400,9 +403,11 @@ static void boot_render_split(uint8_t led_min, uint8_t led_max, uint32_t elapsed
 }
 
 /* ============================================================
- * THEME TABLE  (indexed by ui_mode_t == RGB_MATRIX_CUSTOM offset)
- * ui_mode_t value N also means the mode is at RGB_MATRIX_CUSTOM+N,
- * so this table serves double duty for color lookup and mode mapping.
+ * THEME TABLE  (indexed by ui_mode_t)
+ * Each ui_mode_t value maps to its named RGB effect constant:
+ *   UI_MODE_DEFAULT → RGB_MATRIX_CUSTOM_FIRMWARE_UI
+ *   UI_MODE_DEBUG   → RGB_MATRIX_CUSTOM_DEBUG_MODE
+ *   UI_MODE_GAMING  → RGB_MATRIX_CUSTOM_GAMING_MODE
  * ============================================================ */
 static const rgb_theme_t* const theme_table[UI_MODE_COUNT] = {
     [UI_MODE_DEFAULT] = &theme_ui,
