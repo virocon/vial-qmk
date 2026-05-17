@@ -33,10 +33,10 @@
  * see sync_unicode_mode() in keymap.c.  No manual cycling needed.
  *
  * Platform details (no extra software required):
- *   UNICODE_MODE_WIN    — Alt+numpad codes        (Windows, built-in)
- *   UNICODE_MODE_MACOS  — Unicode Hex Input        (Mac; enable once: System Prefs → Keyboard → Input Sources)
- *   UNICODE_MODE_LINUX  — Ctrl+Shift+U             (Linux/Android, built-in) */
-#define UNICODE_SELECTED_MODES UNICODE_MODE_WIN, UNICODE_MODE_MACOS, UNICODE_MODE_LINUX
+ *   UNICODE_MODE_WINDOWS — Alt+numpad codes        (Windows, built-in)
+ *   UNICODE_MODE_MACOS   — Unicode Hex Input        (Mac; enable once: System Prefs → Keyboard → Input Sources)
+ *   UNICODE_MODE_LINUX   — Ctrl+Shift+U             (Linux/Android, built-in) */
+#define UNICODE_SELECTED_MODES UNICODE_MODE_WINDOWS, UNICODE_MODE_MACOS, UNICODE_MODE_LINUX
 
 
 /* ============================================================
