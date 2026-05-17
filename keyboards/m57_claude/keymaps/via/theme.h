@@ -6,7 +6,7 @@
  * All color values live here; keymap.c never contains raw {r,g,b}.
  * ============================================================ */
 
-typedef struct { uint8_t r, g, b; } rgb_t;
+/* rgb_t is already defined by QMK in quantum/color.h as { uint8_t r, g, b } — no redefinition needed. */
 
 /* Helper: set one LED with per-channel brightness scaling.
  * Uses >>8 (÷256) rather than ÷255 — 0.4% error at max, imperceptible,

@@ -119,9 +119,9 @@ enum custom_keycodes {
  * ============================================================ */
 static void sync_unicode_mode(void) {
     switch (user_config.os_type) {
-        case OS_MAC:                        unicode_input_mode_set(UNICODE_MODE_MACOS); break;
-        case OS_LINUX: case OS_ANDROID:     unicode_input_mode_set(UNICODE_MODE_LINUX); break;
-        default: /* OS_WINDOWS */           unicode_input_mode_set(UNICODE_MODE_WIN);   break;
+        case OS_MAC:                        set_unicode_input_mode(UNICODE_MODE_MACOS);   break;
+        case OS_LINUX: case OS_ANDROID:     set_unicode_input_mode(UNICODE_MODE_LINUX);   break;
+        default: /* OS_WINDOWS */           set_unicode_input_mode(UNICODE_MODE_WINDOWS); break;
     }
 }
 
@@ -170,7 +170,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //,----+------+------+------+------+------+------.  ,------+------+------+------+------+------+-------.
       _______, _______, _______, _______, KC_PGUP, KC_HOME, KC_MS_WH_UP, KC_MS_WH_DOWN, KC_MS_BTN1, KC_MS_BTN2, KC_MS_BTN3, _______, _______, _______,
     //,----+------+------+------+------+------+------.  ,------+------+------+------+------+------+-------.
-      _______, KC_MS_ACCEL2, KC_MS_ACCEL1, KC_MS_ACCEL0, KC_PGDN, KC_END, KC_MS_WH_DOWN, KC_MS_WH_UP, KC_MS_LEFT, KC_MS_DOWN, KC_MS_UP, KC_MS_RGHT, _______, _______,
+      _______, KC_MS_ACCEL2, KC_MS_ACCEL1, KC_MS_ACCEL0, KC_PGDN, KC_END, KC_MS_WH_DOWN, KC_MS_WH_UP, KC_MS_LEFT, KC_MS_DOWN, KC_MS_UP, KC_MS_RIGHT, _______, _______,
     //,----+------+------+------+------+------+------.  ,------+------+------+------+------+------+-------.
       _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,
     //`----+------+------+------+------+------+------.  ,------+------+------+------+------+------+------'
@@ -209,8 +209,8 @@ const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][2] = {
 
 /* ============================================================
  * COMBOS  (zero hardcoded; all managed via Vial runtime editor)
+ * key_combos[] storage is provided by quantum/vial.c when VIAL_ENABLE is set.
  * ============================================================ */
-combo_t key_combos[COMBO_COUNT];
 
 /* ============================================================
  * KEY OVERRIDES -- Swedish AltGr characters + Shift morphs
@@ -569,26 +569,9 @@ static void render_reactive(uint8_t led_min, uint8_t led_max,
 
 /* ============================================================
  * CUSTOM RGB EFFECT STUBS
- * Canvas is cleared here; actual rendering happens in
- * rgb_matrix_indicators_advanced_user.
+ * Implementations live in rgb_matrix_user.inc (compiled via RGB_MATRIX_CUSTOM_USER).
+ * Canvas is cleared there; actual rendering happens in rgb_matrix_indicators_advanced_user.
  * ============================================================ */
-#ifdef RGB_MATRIX_CUSTOM_USER
-static bool FIRMWARE_UI(effect_params_t *params) {
-    RGB_MATRIX_USE_LIMITS(led_min, led_max);
-    for (uint8_t i = led_min; i < led_max; i++) apply_color(i, COLOR_OFF, 255);
-    return led_max < RGB_MATRIX_LED_COUNT;
-}
-static bool DEBUG_MODE(effect_params_t *params) {
-    RGB_MATRIX_USE_LIMITS(led_min, led_max);
-    for (uint8_t i = led_min; i < led_max; i++) apply_color(i, COLOR_OFF, 255);
-    return led_max < RGB_MATRIX_LED_COUNT;
-}
-static bool GAMING_MODE(effect_params_t *params) {
-    RGB_MATRIX_USE_LIMITS(led_min, led_max);
-    for (uint8_t i = led_min; i < led_max; i++) apply_color(i, COLOR_OFF, 255);
-    return led_max < RGB_MATRIX_LED_COUNT;
-}
-#endif
 
 /* ============================================================
  * QMK HOOKS
@@ -600,8 +583,7 @@ static bool GAMING_MODE(effect_params_t *params) {
 bool encoder_update_user(uint8_t index, bool clockwise) {
     uint8_t layer = get_highest_layer(layer_state);
     uint8_t mode  = rgb_matrix_get_mode();
-    bool gaming_rgb_active = (mode >= RGB_MATRIX_CUSTOM &&
-                              (mode - RGB_MATRIX_CUSTOM) == UI_MODE_GAMING);
+    bool gaming_rgb_active = (mode == RGB_MATRIX_CUSTOM_GAMING_MODE);
 
     if (layer == LAYER_FN && !gaming_rgb_active) {
         if (index == 0) {
@@ -685,8 +667,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
     /* Feed reactive buffer when GAMING_MODE RGB is active */
     uint8_t mode = rgb_matrix_get_mode();
-    bool gaming_rgb_active = (mode >= RGB_MATRIX_CUSTOM &&
-                              (mode - RGB_MATRIX_CUSTOM) == UI_MODE_GAMING);
+    bool gaming_rgb_active = (mode == RGB_MATRIX_CUSTOM_GAMING_MODE);
     if (gaming_rgb_active) {
         uint8_t led = g_led_config.matrix_co[record->event.key.row][record->event.key.col];
         if (led != NO_LED) {
@@ -735,7 +716,7 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 
     if (is_gaming && !game_layer_was_on) {
         saved_rgb_mode = rgb_matrix_get_mode();
-        rgb_matrix_mode_noeeprom(RGB_MATRIX_CUSTOM + UI_MODE_GAMING);
+        rgb_matrix_mode_noeeprom(RGB_MATRIX_CUSTOM_GAMING_MODE);
         LOG(DEBUG_INFO, "game on, saved mode=%u", saved_rgb_mode);
     } else if (!is_gaming && game_layer_was_on) {
         rgb_matrix_mode_noeeprom(saved_rgb_mode);
@@ -766,9 +747,11 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 
     /* Only run custom pipeline in custom RGB modes */
     uint8_t mode = rgb_matrix_get_mode();
-    if (mode < RGB_MATRIX_CUSTOM) return false;
-
-    ui_mode_t active_ui_mode = (ui_mode_t)(mode - RGB_MATRIX_CUSTOM);
+    ui_mode_t active_ui_mode;
+    if      (mode == RGB_MATRIX_CUSTOM_FIRMWARE_UI) active_ui_mode = UI_MODE_DEFAULT;
+    else if (mode == RGB_MATRIX_CUSTOM_DEBUG_MODE)  active_ui_mode = UI_MODE_DEBUG;
+    else if (mode == RGB_MATRIX_CUSTOM_GAMING_MODE) active_ui_mode = UI_MODE_GAMING;
+    else return false;
 
     /* Periodic keycode cache refresh (catches live Vial remaps) */
     if (timer_elapsed32(cache_refresh_timer) > CACHE_REFRESH_MS) {
